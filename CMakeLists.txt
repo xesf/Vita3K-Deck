@@ -55,6 +55,7 @@ option(VITA3K_STEAMOS_NATIVE "Build a Qt-free native frontend for Steam Deck / S
 if(VITA3K_STEAMOS_NATIVE)
 	# Steam already provides rich presence and update delivery for anything added as a Steam shortcut.
 	set(USE_DISCORD_RICH_PRESENCE OFF CACHE BOOL "" FORCE)
+	add_compile_definitions(VITA3K_STEAMOS_NATIVE)
 endif()
 
 option(FORCE_BUILD_OPENSSL_MAC OFF)

@@ -28,6 +28,17 @@
 #define VITA3K_DEFAULT_MEMORY_MAPPING "double-buffer"
 #endif
 
+#ifdef VITA3K_STEAMOS_NATIVE
+// Steam already provides rich presence and update delivery for anything added as a Steam
+// shortcut, and there's no in-app UI to surface an update prompt in anyway.
+#define VITA3K_DEFAULT_DISCORD_RICH_PRESENCE false
+// Modern AMD APUs handle this for free at Vita-era texture resolutions.
+#define VITA3K_DEFAULT_ANISOTROPIC_FILTERING 4
+#else
+#define VITA3K_DEFAULT_DISCORD_RICH_PRESENCE true
+#define VITA3K_DEFAULT_ANISOTROPIC_FILTERING 1
+#endif
+
 enum ModulesMode {
     AUTOMATIC,
     AUTO_MANUAL,
@@ -164,7 +175,7 @@ using PhysicalKeyCode = input::PhysicalKeyCode;
     code(bool, "surface-sync-clamp-rt", true, surface_sync_clamp_rt)                               \
     code(std::string, "screen-filter", "Bilinear", screen_filter)                                       \
     code(bool, "v-sync", true, v_sync)                                                                  \
-    code(int, "anisotropic-filtering", 1, anisotropic_filtering)                                        \
+    code(int, "anisotropic-filtering", VITA3K_DEFAULT_ANISOTROPIC_FILTERING, anisotropic_filtering)      \
     code(bool, "texture-cache", true, texture_cache)                                                    \
     code(bool, "async-pipeline-compilation", false, async_pipeline_compilation)                          \
     code(bool, "accurate-thread-scheduling", true, accurate_thread_scheduling)                          \
@@ -194,7 +205,7 @@ using PhysicalKeyCode = input::PhysicalKeyCode;
     code(int, "log-level", 2 /*SPDLOG_LEVEL_INFO*/, log_level)                                          \
     code(bool, "cpu-opt", true, cpu_opt)                                                                \
     code(std::string, "pref-path", std::string{}, vita_fs_path)                                         \
-    code(bool, "discord-rich-presence", true, discord_rich_presence)                                    \
+    code(bool, "discord-rich-presence", VITA3K_DEFAULT_DISCORD_RICH_PRESENCE, discord_rich_presence)     \
     code(bool, "wait-for-debugger", false, wait_for_debugger)                                           \
     code(bool, "color-surface-debug", false, color_surface_debug)                                       \
     code(bool, "performance-overlay", false, performance_overlay)                                       \
