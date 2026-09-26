@@ -548,6 +548,9 @@ int main(int argc, char *argv[]) {
             cleanup_launch(app::AppSessionStopReason::LaunchFailure);
             break;
         }
+        // No mouse cursor during gameplay - this build is controller-first and there's no
+        // in-window UI (settings dialogs, etc.) that would need one.
+        SDL_HideCursor();
         frame_host = LinuxNativeFrameHost(window, &gl_context);
 
         if (emuenv.backend_renderer == renderer::Backend::OpenGL) {
