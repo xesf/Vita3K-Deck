@@ -59,6 +59,7 @@ void refresh_controllers(CtrlState &state, EmuEnvState &emuenv) {
 
             ++controller;
         } else {
+            LOG_INFO("[CTRL] Controller disconnected: '{}' (port={})", controller->second.name, controller->second.port);
             if (state.motion_source_id.load(std::memory_order_relaxed) == SDL_GetGamepadID(controller->second.controller.get()))
                 state.motion_source_id.store(0, std::memory_order_relaxed);
             state.free_ports[controller->second.port] = true;
@@ -70,6 +71,7 @@ void refresh_controllers(CtrlState &state, EmuEnvState &emuenv) {
     // Add new controllers
     int num_gamepads = 0;
     const auto gamepads = SDL_GetGamepads(&num_gamepads);
+    LOG_INFO("[CTRL] refresh_controllers: SDL reports {} gamepad(s) attached, {} already tracked", num_gamepads, state.controllers_num);
     for (int gamepad_index = 0; gamepad_index < num_gamepads; ++gamepad_index) {
         const auto gamepad_id = gamepads[gamepad_index];
         if (state.controllers_num >= SCE_CTRL_MAX_WIRELESS_NUM) {
@@ -117,6 +119,16 @@ void refresh_controllers(CtrlState &state, EmuEnvState &emuenv) {
                     SDL_SetGamepadLED(controller.get(), color[0], color[1], color[2]);
                 }
             }
+
+            // Query capability directly (not just react to an actual touchpad/gyro event) so a
+            // setup where SDL sees no touchpad/gyro at all (e.g. Steam Input's virtual gamepad
+            // in Gaming Mode may not expose either) is diagnosable from the log, rather than
+            // looking identical to "capability is there but no events arrive".
+            const int num_touchpads = SDL_GetNumGamepadTouchpads(controller.get());
+            const SDL_GamepadType gamepad_type = SDL_GetGamepadType(controller.get());
+            LOG_INFO("[CTRL] Controller connected: '{}' (type={}, port={}) - gyro={} accel={} led={} touchpads={}",
+                new_controller.name, static_cast<int>(gamepad_type), new_controller.port,
+                new_controller.has_gyro, new_controller.has_accel, new_controller.has_led, num_touchpads);
 
             found_gyro |= new_controller.has_gyro;
             found_accel |= new_controller.has_accel;
