@@ -114,14 +114,15 @@ void touch_vsync_update(EmuEnvState &emuenv) {
         }
 
         if (touch.is_touchpad && touch.has_second_touchpad) {
-            // Two independent physical touchpads (e.g. Steam Deck's): pad 0 -> front, pad 1 ->
-            // back, simultaneously and regardless of the manual touchscreen_port/both toggle -
-            // the natural physical mapping onto the Vita's own two touch surfaces.
-            SceTouchData front = recover_touchpad_events(emuenv, 0, SCE_TOUCH_PORT_FRONT);
+            // Two independent physical touchpads (e.g. Steam Deck's): right pad (index 1) ->
+            // front touch screen (the far more commonly used surface), left pad (index 0) ->
+            // rear touch, simultaneously and regardless of the manual touchscreen_port/both
+            // toggle - the natural physical mapping onto the Vita's own two touch surfaces.
+            SceTouchData front = recover_touchpad_events(emuenv, 1, SCE_TOUCH_PORT_FRONT);
             front.timeStamp = timestamp;
             buffers[SCE_TOUCH_PORT_FRONT] = front;
 
-            SceTouchData back = recover_touchpad_events(emuenv, 1, SCE_TOUCH_PORT_BACK);
+            SceTouchData back = recover_touchpad_events(emuenv, 0, SCE_TOUCH_PORT_BACK);
             back.timeStamp = timestamp;
             buffers[SCE_TOUCH_PORT_BACK] = back;
         } else {
@@ -316,6 +317,8 @@ std::vector<SceFVector2> get_touchpad_fingers_pos(const TouchState &state, SceTo
         return {};
 
     std::vector<SceFVector2> touchpad_fingers_pos;
+    // When there are two independent pads, report the right one (index 1) - it's mapped to the
+    // front touch screen, the far more commonly used surface.
     const int pad_index = state.has_second_touchpad ? 1 : 0;
     const uint8_t finger_count = state.touchpad_finger_count[pad_index];
     touchpad_fingers_pos.reserve(finger_count);
@@ -323,7 +326,7 @@ std::vector<SceFVector2> get_touchpad_fingers_pos(const TouchState &state, SceTo
         touchpad_fingers_pos.push_back({ state.touchpad_buffer[pad_index][i].x, state.touchpad_buffer[pad_index][i].y });
     }
 
-    port = state.has_second_touchpad ? SCE_TOUCH_PORT_BACK : state.touchscreen_port;
+    port = state.has_second_touchpad ? SCE_TOUCH_PORT_FRONT : state.touchscreen_port;
 
     return touchpad_fingers_pos;
 }
