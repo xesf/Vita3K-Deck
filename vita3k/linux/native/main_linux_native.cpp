@@ -513,6 +513,21 @@ int main(int argc, char *argv[]) {
                     refresh_controllers(emuenv.ctrl, emuenv);
                     break;
 
+                case SDL_EVENT_GAMEPAD_BUTTON_DOWN:
+                    // Grip/paddle buttons have no Vita equivalent, so give the two most useful
+                    // ones a default action rather than leaving them dead out of the box.
+                    switch (event.gbutton.button) {
+                    case SDL_GAMEPAD_BUTTON_LEFT_PADDLE1:
+                        toggle_touchscreen(emuenv.touch);
+                        break;
+                    case SDL_GAMEPAD_BUTTON_RIGHT_PADDLE1:
+                        take_screenshot(emuenv);
+                        break;
+                    default:
+                        break;
+                    }
+                    break;
+
                 case SDL_EVENT_GAMEPAD_TOUCHPAD_DOWN:
                 case SDL_EVENT_GAMEPAD_TOUCHPAD_MOTION:
                 case SDL_EVENT_GAMEPAD_TOUCHPAD_UP:

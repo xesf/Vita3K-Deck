@@ -20,9 +20,16 @@ struct TouchState {
     int touch_buffer_idx = 0;
     bool is_touchpad = false;
     SDL_TouchFingerEvent finger_buffer[8] = {};
-    SDL_GamepadTouchpadEvent touchpad_buffer[8] = {};
+    // Indexed by SDL_GamepadTouchpadEvent::touchpad. Most controllers report a single pad (index
+    // 0); Steam Deck reports two independent ones (0=left, 1=right). Any index beyond this is
+    // folded into slot 1 rather than dropped.
+    SDL_GamepadTouchpadEvent touchpad_buffer[2][8] = {};
     uint8_t finger_count = 0;
-    uint8_t touchpad_finger_count = 0;
+    uint8_t touchpad_finger_count[2] = { 0, 0 };
+    // Set once a second physical touchpad is ever seen this session, switching routing to the
+    // fixed pad-0-front/pad-1-back mapping regardless of touchscreen_port/touchscreen_both -
+    // the natural analogue of the Vita's own two touch surfaces.
+    bool has_second_touchpad = false;
     bool is_touched[2] = { false, false };
     int curr_touch_id[2] = { 0, 0 };
     int next_touch_id = 1;
@@ -49,9 +56,12 @@ struct TouchState {
         touch_buffer_idx = 0;
         is_touchpad = false;
         std::fill_n(finger_buffer, 8, SDL_TouchFingerEvent{});
-        std::fill_n(touchpad_buffer, 8, SDL_GamepadTouchpadEvent{});
+        std::fill_n(touchpad_buffer[0], 8, SDL_GamepadTouchpadEvent{});
+        std::fill_n(touchpad_buffer[1], 8, SDL_GamepadTouchpadEvent{});
         finger_count = 0;
-        touchpad_finger_count = 0;
+        touchpad_finger_count[0] = 0;
+        touchpad_finger_count[1] = 0;
+        has_second_touchpad = false;
         is_touched[0] = false;
         is_touched[1] = false;
         curr_touch_id[0] = 0;
