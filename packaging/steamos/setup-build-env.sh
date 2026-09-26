@@ -48,6 +48,8 @@ PACKAGES=(
     openssl curl libidn2 libunistring libffi zlib
     # audio backends (cubeb builds both in)
     libpulse alsa-lib
+    # SDL's Linux video/input backends
+    dbus libdecor libusb
     # misc build-time tools
     pkgconf python git
 )
@@ -76,7 +78,8 @@ for bin in cmake ninja clang clang++ ccache pkg-config git python3; do
 done
 for hdr in /usr/include/features.h /usr/include/X11/Xlib.h /usr/include/wayland-client.h \
     /usr/include/openssl/ssl.h /usr/include/curl/curl.h /usr/include/pulse/pulseaudio.h \
-    /usr/include/alsa/asoundlib.h; do
+    /usr/include/alsa/asoundlib.h /usr/include/dbus-1.0/dbus/dbus.h \
+    /usr/include/libdecor-0/libdecor.h /usr/include/libusb-1.0/libusb.h; do
     check_header "$hdr"
 done
 
