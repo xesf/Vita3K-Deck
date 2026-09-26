@@ -48,10 +48,15 @@ void MotionInput::SetGyroscope(const Util::Vec3f &gyroscope) {
         gyro_bias = (gyro_bias * 0.9999f) + (gyroscope * 0.0001f);
     }
 
-    // Enable gyro compensation if gyro is active
-    if (gyro.Length2() > 0) {
-        only_accelerometer = false;
-    }
+    // Reflects whether the CURRENT sample carries measurable rotation, not a one-way
+    // hardware-capability latch. Originally meant "this Joy-Con has no gyro at all" (fine to
+    // decide once) - but Vita3K already gates gyro delivery on confirmed per-controller
+    // capability, so latching this permanently false the first time any gyro motion is seen
+    // (e.g. a camera-aim turn) left slow, direction-reversing tilts - a "rock back and forth to
+    // balance" mechanic, which is fundamentally an accelerometer-domain signal - stuck with the
+    // much weaker gyro-drift-correction gains below instead of the strong accelerometer
+    // correction they need, for the rest of the session.
+    only_accelerometer = (gyro.Length2() <= 0.0f);
 }
 
 void MotionInput::SetQuaternion(const Util::Quaternion<SceFloat> &quaternion) {
