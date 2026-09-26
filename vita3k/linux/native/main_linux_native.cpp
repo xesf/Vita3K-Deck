@@ -348,6 +348,22 @@ int main(int argc, char *argv[]) {
 
     app::AppSessionController session(emuenv);
 
+    // Initialized once for the whole process lifetime, matching the Qt build (main.cpp calls
+    // SDL_Init a single time before any game loads) rather than Android's per-launch pattern -
+    // re-initializing audio/gamepad/etc. fresh on every boot left the audio backend in a bad
+    // state (SDL_OpenAudioDevice nominally succeeded but the device was already unusable by the
+    // time the game opened its first port).
+    std::atexit(SDL_Quit);
+    SDL_SetHint(SDL_HINT_JOYSTICK_THREAD, "1");
+    SDL_SetHint(SDL_HINT_JOYSTICK_ENHANCED_REPORTS, "1");
+    SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_SWITCH, "1");
+    SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_JOY_CONS, "1");
+
+    if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMEPAD | SDL_INIT_HAPTIC | SDL_INIT_SENSOR | SDL_INIT_CAMERA)) {
+        LOG_ERROR("SDL_Init failed: {}", SDL_GetError());
+        return SDLInitFailed;
+    }
+
     int exit_code = 0;
     bool relaunch_requested = false;
 
@@ -365,22 +381,9 @@ int main(int argc, char *argv[]) {
                 SDL_DestroyWindow(window);
                 window = nullptr;
             }
-            SDL_Quit();
         };
 
         LOG_INFO("Booting game '{}'", launch_request.app_path);
-
-        if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMEPAD | SDL_INIT_HAPTIC | SDL_INIT_SENSOR)) {
-            LOG_ERROR("SDL_Init failed: {}", SDL_GetError());
-            exit_code = SDLInitFailed;
-            session.stop(app::AppSessionStopReason::LaunchFailure);
-            break;
-        }
-
-        SDL_SetHint(SDL_HINT_JOYSTICK_THREAD, "1");
-        SDL_SetHint(SDL_HINT_JOYSTICK_ENHANCED_REPORTS, "1");
-        SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_SWITCH, "1");
-        SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_JOY_CONS, "1");
 
         refresh_controllers(emuenv.ctrl, emuenv);
 
