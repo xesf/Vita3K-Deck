@@ -20,6 +20,21 @@ execute_process(
 	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 	OUTPUT_VARIABLE GIT_HASH
 	OUTPUT_STRIP_TRAILING_WHITESPACE)
+execute_process(
+	COMMAND git log -1 --pretty=%s
+	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+	OUTPUT_VARIABLE GIT_SUBJECT
+	OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+if(GIT_COUNT STREQUAL "")
+	set(GIT_COUNT 0)
+endif()
+if(GIT_SUBJECT STREQUAL "")
+	set(GIT_SUBJECT "unknown")
+endif()
+# Escape characters that would break the FORK_BUILD_CHANGES string literal
+string(REPLACE "\\" "\\\\" GIT_SUBJECT "${GIT_SUBJECT}")
+string(REPLACE "\"" "\\\"" GIT_SUBJECT "${GIT_SUBJECT}")
 
 # Value is different when is PR
 if("$ENV{GITHUB_EVENT_NAME}" STREQUAL "pull_request")
