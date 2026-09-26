@@ -44,7 +44,7 @@ PACKAGES=(
     glibc linux-api-headers
     # X11 / Wayland windowing
     libx11 libxext libxau libxdmcp libxcb wayland xorgproto
-    libxrandr libxfixes libxi libxcursor libxinerama libxrender libxss libxkbfile
+    libxrandr libxfixes libxi libxcursor libxinerama libxrender libxss libxkbfile libxtst
     xcb-util xcb-util-wm xcb-util-keysyms xcb-util-cursor xcb-util-image xcb-util-renderutil xcb-util-errors
     # crypto / networking
     openssl curl libidn2 libunistring libffi zlib
