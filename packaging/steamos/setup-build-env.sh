@@ -46,6 +46,8 @@ PACKAGES=(
     libx11 libxext libxau libxdmcp libxcb wayland
     # crypto / networking
     openssl curl libidn2 libunistring libffi zlib
+    # audio backends (cubeb builds both in)
+    libpulse alsa-lib
     # misc build-time tools
     pkgconf python git
 )
@@ -73,7 +75,8 @@ for bin in cmake ninja clang clang++ ccache pkg-config git python3; do
     check_bin "$bin"
 done
 for hdr in /usr/include/features.h /usr/include/X11/Xlib.h /usr/include/wayland-client.h \
-    /usr/include/openssl/ssl.h /usr/include/curl/curl.h; do
+    /usr/include/openssl/ssl.h /usr/include/curl/curl.h /usr/include/pulse/pulseaudio.h \
+    /usr/include/alsa/asoundlib.h; do
     check_header "$hdr"
 done
 
