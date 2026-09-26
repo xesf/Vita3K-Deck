@@ -210,6 +210,12 @@ void VKTextureCache::prepare_staging_buffer(bool is_configure) {
     assert(!is_texture_transfer_ready);
     VKContext *context = reinterpret_cast<VKContext *>(state.context);
 
+    // a texture sync can happen while no scene recording is active (e.g. a SetState command
+    // is processed between scenes); prerender_cmd is only valid while is_recording is true, so
+    // without this guard the transition below hands the driver a null command buffer and crashes.
+    if (!context->is_recording)
+        context->start_recording();
+
     TextureStagingBuffer *staging_buffer = &staging_buffers[staging_idx];
     // some textures must be 16-bytes aligned, and staging_buffer->buffer.size is 16-bytes aligned
     staging_buffer->used_so_far = align(staging_buffer->used_so_far, 16);
