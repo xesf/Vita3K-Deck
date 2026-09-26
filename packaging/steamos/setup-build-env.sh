@@ -55,7 +55,7 @@ PACKAGES=(
 )
 
 echo "==> Force-reinstalling: ${PACKAGES[*]}"
-sudo pacman -Sy --overwrite '*' "${PACKAGES[@]}"
+sudo pacman -Sy --noconfirm --overwrite '*' "${PACKAGES[@]}"
 
 echo "==> Verifying"
 missing=0
