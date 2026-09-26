@@ -66,6 +66,13 @@ struct CtrlState {
     int controllers_num = 0;
     float analog_multiplier = 1.0f;
     bool has_motion_support = false;
+    // Joystick instance ID of the controller currently feeding motion data (0 = none).
+    // Some platforms (e.g. Steam Deck) can expose the same physical controller more than
+    // once (its native driver plus a Steam Input virtual gamepad), each streaming its own
+    // sensor events. Accepting motion data from more than one source at a time corrupts
+    // the orientation state that features like gyro-based tilt/balance rely on, so only a
+    // single elected controller is allowed to feed it.
+    std::atomic<SDL_JoystickID> motion_source_id{ 0 };
     bool free_ports[SCE_CTRL_MAX_WIRELESS_NUM] = { true, true, true, true };
     SceCtrlPadInputMode input_mode = SCE_CTRL_MODE_DIGITAL;
     SceCtrlPadInputMode input_mode_ext = SCE_CTRL_MODE_DIGITAL;
@@ -88,6 +95,7 @@ struct CtrlState {
         controllers.clear();
         controllers_num = 0;
         has_motion_support = false;
+        motion_source_id.store(0, std::memory_order_relaxed);
         std::fill_n(free_ports, SCE_CTRL_MAX_WIRELESS_NUM, true);
         input_mode = SCE_CTRL_MODE_DIGITAL;
         input_mode_ext = SCE_CTRL_MODE_DIGITAL;

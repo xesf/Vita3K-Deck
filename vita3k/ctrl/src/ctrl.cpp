@@ -59,6 +59,8 @@ void refresh_controllers(CtrlState &state, EmuEnvState &emuenv) {
 
             ++controller;
         } else {
+            if (state.motion_source_id.load(std::memory_order_relaxed) == SDL_GetGamepadID(controller->second.controller.get()))
+                state.motion_source_id.store(0, std::memory_order_relaxed);
             state.free_ports[controller->second.port] = true;
             controller = state.controllers.erase(controller);
             state.controllers_num--;
@@ -118,6 +120,12 @@ void refresh_controllers(CtrlState &state, EmuEnvState &emuenv) {
 
             found_gyro |= new_controller.has_gyro;
             found_accel |= new_controller.has_accel;
+
+            // Elect the first fully motion-capable controller as the sole source of
+            // gyro/accel data. See the comment on CtrlState::motion_source_id.
+            SDL_JoystickID none = 0;
+            if (new_controller.has_gyro && new_controller.has_accel)
+                state.motion_source_id.compare_exchange_strong(none, SDL_GetGamepadID(controller.get()));
 
             state.controllers.emplace(guid, new_controller);
             state.controllers_num++;

@@ -215,9 +215,19 @@ static void handle_motion_event(EmuEnvState &emuenv, int32_t sensor_type, const 
     if (!emuenv.ctrl.has_motion_support && !emuenv.motion.has_device_motion_support)
         return;
 
+    const auto from_gamepad = sensor.type == SDL_EVENT_GAMEPAD_SENSOR_UPDATE;
+
+    // Some platforms (e.g. Steam Deck) can expose the same physical controller more than
+    // once, each streaming its own independent sensor events. Only accept data from the
+    // single controller elected as the motion source, otherwise the two un-synchronized
+    // streams fight over the same orientation state (harmless for raw gyro-based aiming,
+    // but it breaks anything relying on continuous accelerometer/gyro fusion, like tilt
+    // or balance controls).
+    if (from_gamepad && sensor.which != emuenv.ctrl.motion_source_id.load(std::memory_order_relaxed))
+        return;
+
     const auto get_processed_sensor_data = [&]() {
         Util::Vec3f data = { sensor.data[0], sensor.data[1], sensor.data[2] };
-        const auto from_gamepad = sensor.type == SDL_EVENT_GAMEPAD_SENSOR_UPDATE;
         if (!from_gamepad) {
             switch (emuenv.motion.device_native_rotation) {
             case ROTATION_90: // portrait -> landscape left
