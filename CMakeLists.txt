@@ -51,6 +51,12 @@ else()
 	option(BUILD_APPIMAGE "Build an AppImage." OFF)
 endif()
 
+option(VITA3K_STEAMOS_NATIVE "Build a Qt-free native frontend for Steam Deck / Steam Machine (no game picker, launches one title per process via --installed-path/-r)" OFF)
+if(VITA3K_STEAMOS_NATIVE)
+	# Steam already provides rich presence and update delivery for anything added as a Steam shortcut.
+	set(USE_DISCORD_RICH_PRESENCE OFF CACHE BOOL "" FORCE)
+endif()
+
 option(FORCE_BUILD_OPENSSL_MAC OFF)
 
 if("${CMAKE_CXX_COMPILER_LAUNCHER}" STREQUAL "")

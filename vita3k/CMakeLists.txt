@@ -122,7 +122,7 @@ if(NOT MSVC)
 	add_compile_options(-Wformat -Werror=format-security -Werror=return-type)
 endif()
 
-if(NOT ANDROID)
+if(NOT ANDROID AND NOT VITA3K_STEAMOS_NATIVE)
 	include(${CMAKE_SOURCE_DIR}/cmake/qt6.cmake)
 endif()
 
@@ -140,7 +140,7 @@ add_subdirectory(display)
 add_subdirectory(features)
 add_subdirectory(glutil)
 add_subdirectory(updater)
-if(NOT ANDROID)
+if(NOT ANDROID AND NOT VITA3K_STEAMOS_NATIVE)
 	add_subdirectory(gui-qt)
 endif()
 add_subdirectory(gxm)
@@ -220,6 +220,12 @@ if(ANDROID)
 		endforeach()
 		set_target_properties(vita3k PROPERTIES LINK_FLAGS "${LIBS_TO_EXCLUDE_FLAG}")
 	endif()
+elseif(VITA3K_STEAMOS_NATIVE)
+	add_executable(vita3k linux/native/main_linux_native.cpp interface.cpp interface.h performance.cpp)
+	# so `#include "interface.h"` resolves from linux/native/main_linux_native.cpp, same as the Android build's jni/ sources.
+	target_include_directories(vita3k PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+	# interface.cpp needs pugixml; the Qt/Android builds get it transitively via gui-qt/android, which this profile skips.
+	target_link_libraries(vita3k PRIVATE pugixml::pugixml)
 else()
 	add_executable(vita3k MACOSX_BUNDLE main.cpp interface.cpp interface.h performance.cpp)
 endif()
@@ -230,14 +236,14 @@ if(WIN32)
 endif()
 
 target_link_libraries(vita3k PRIVATE app audio codec compat config cppcommon ctrl dialog display ime lang gdbstub gxm io miniz modules motion packages patch renderer shader touch util psvpfsparser)
-if(NOT ANDROID)
+if(NOT ANDROID AND NOT VITA3K_STEAMOS_NATIVE)
 	target_link_libraries(vita3k PRIVATE gui-qt)
 endif()
 if(USE_DISCORD_RICH_PRESENCE)
 	target_link_libraries(vita3k PRIVATE discord-rpc)
 endif()
 
-if(NOT ANDROID)
+if(NOT ANDROID AND NOT VITA3K_STEAMOS_NATIVE)
 	file(GLOB VITA3K_QT_TS_FILES CONFIGURE_DEPENDS
 		"${CMAKE_SOURCE_DIR}/i18n/qt/*.ts")
 	set(VITA3K_QT_QM_DIR "${CMAKE_BINARY_DIR}/qt_translations")
@@ -340,7 +346,7 @@ if(APPLE)
 		COMMAND codesign --force --deep --preserve-metadata=entitlements,requirements,flags,runtime --sign - "$<TARGET_FILE_DIR:vita3k>/../..")
 elseif(LINUX)
 	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-rpath='$ORIGIN'")
-	if(BUILD_APPIMAGE)
+	if(BUILD_APPIMAGE AND NOT VITA3K_STEAMOS_NATIVE)
 		set(APPDIR "${CMAKE_BINARY_DIR}/AppImage")
 		add_custom_command(
 			TARGET vita3k
@@ -371,12 +377,19 @@ elseif(LINUX)
 		TARGET vita3k
 		POST_BUILD
 		COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/../data" "$<TARGET_FILE_DIR:vita3k>/data"
-		COMMAND ${CMAKE_COMMAND} -E copy_directory "${VITA3K_QT_QM_DIR}" "$<TARGET_FILE_DIR:vita3k>/translations"
 		COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/shaders-builtin" "$<TARGET_FILE_DIR:vita3k>/shaders-builtin"
 		COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/icons" "$<TARGET_FILE_DIR:vita3k>/icons"
 		COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_SOURCE_DIR}/COPYING.txt" "$<TARGET_FILE_DIR:vita3k>/COPYING.txt"
         COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_SOURCE_DIR}/README.md" "$<TARGET_FILE_DIR:vita3k>/README.md"
 	)
+	if(NOT VITA3K_STEAMOS_NATIVE)
+		# Qt translations - not built at all for the Steam Deck/Machine native profile (no Qt6, no VITA3K_QT_QM_DIR).
+		add_custom_command(
+			TARGET vita3k
+			POST_BUILD
+			COMMAND ${CMAKE_COMMAND} -E copy_directory "${VITA3K_QT_QM_DIR}" "$<TARGET_FILE_DIR:vita3k>/translations"
+		)
+	endif()
 	if(USE_DISCORD_RICH_PRESENCE)
 		add_custom_command(
 		TARGET vita3k
