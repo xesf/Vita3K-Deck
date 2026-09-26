@@ -48,15 +48,21 @@ void MotionInput::SetGyroscope(const Util::Vec3f &gyroscope) {
         gyro_bias = (gyro_bias * 0.9999f) + (gyroscope * 0.0001f);
     }
 
-    // Reflects whether the CURRENT sample carries measurable rotation, not a one-way
-    // hardware-capability latch. Originally meant "this Joy-Con has no gyro at all" (fine to
-    // decide once) - but Vita3K already gates gyro delivery on confirmed per-controller
-    // capability, so latching this permanently false the first time any gyro motion is seen
-    // (e.g. a camera-aim turn) left slow, direction-reversing tilts - a "rock back and forth to
-    // balance" mechanic, which is fundamentally an accelerometer-domain signal - stuck with the
-    // much weaker gyro-drift-correction gains below instead of the strong accelerometer
-    // correction they need, for the rest of the session.
-    only_accelerometer = (gyro.Length2() <= 0.0f);
+    // Trust gyro immediately the instant real rotation reappears (keeps aim responsive - no lag
+    // switching back into gyro-trusting mode), but only fall back to strong accelerometer
+    // correction after a SUSTAINED run of near-zero rate, not a single low-rate instant.
+    // Continuous smooth aiming has plenty of brief low-rate moments too (deadband dips at
+    // direction changes, gentle fine adjustments) and reacting to those alone made aim fight
+    // itself; a slow, direction-reversing "rock back and forth to balance" tilt genuinely stays
+    // near-zero rate for a sustained stretch, which is what should engage the strong correction
+    // (see UpdateOrientation) instead of the permanent one-way latch this used to be.
+    constexpr int accel_only_hysteresis_samples = 15;
+    if (gyro.Length2() > 0.0f) {
+        only_accelerometer = false;
+        accel_only_hysteresis_counter = 0;
+    } else if (++accel_only_hysteresis_counter >= accel_only_hysteresis_samples) {
+        only_accelerometer = true;
+    }
 }
 
 void MotionInput::SetQuaternion(const Util::Quaternion<SceFloat> &quaternion) {

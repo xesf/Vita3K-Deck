@@ -112,4 +112,9 @@ private:
 
     // Use accelerometer values to calculate position
     bool only_accelerometer = true;
+
+    // Consecutive gyro samples below the deadband threshold. Used to require a sustained lull
+    // (not just one low-rate instant, which continuous smooth aiming has plenty of) before
+    // trusting the accelerometer strongly - see the comment in SetGyroscope().
+    int accel_only_hysteresis_counter = 0;
 };
