@@ -26,6 +26,7 @@
 // JNI/Android-specific glue and swaps in the desktop XDG paths already used
 // by the Qt build (app::init_paths) plus a plain X11/Wayland FrameHost.
 
+#include "archive.h"
 #include "interface.h"
 
 #include <app/functions.h>
@@ -42,14 +43,22 @@
 #include <modules/module_parent.h>
 #include <motion/event_handler.h>
 #include <motion/functions.h>
+#include <packages/functions.h>
+#include <packages/license.h>
+#include <packages/pkg.h>
+#include <packages/sfo.h>
 #include <renderer/frame_host.h>
 #include <renderer/functions.h>
 #include <renderer/state.h>
 #include <touch/functions.h>
+#include <util/fs.h>
 #include <util/log.h>
 #include <util/string_utils.h>
 
 #include <SDL3/SDL.h>
+
+#include <pwd.h>
+#include <unistd.h>
 
 #include <cstring>
 #include <filesystem>
@@ -287,6 +296,65 @@ void handle_ime_text_input(EmuEnvState &emuenv, const char *text) {
     }
 }
 
+fs::path get_home_directory() {
+    if (const char *home = getenv("HOME"); home && *home)
+        return fs::path(home);
+    if (const struct passwd *pw = getpwuid(getuid()); pw && pw->pw_dir)
+        return fs::path(pw->pw_dir);
+    return {};
+}
+
+// There's no install-wizard UI to walk a fresh Steam Deck/Machine setup through firmware or
+// game installation, so instead scan the EmuDeck-style folders a Deck user already has (or
+// expects) for anything new and install it automatically. install_archive/install_pup are
+// idempotent here - already-installed content is detected and skipped, so re-scanning on every
+// boot is safe and cheap once nothing new has been dropped in.
+void scan_and_install_drop_folder(EmuEnvState &emuenv) {
+    const fs::path home = get_home_directory();
+    if (home.empty())
+        return;
+
+    const app::FirmwareState firmware = app::get_firmware_state(emuenv);
+    if (!firmware.main_firmware || !firmware.font_package) {
+        const fs::path bios_dir = home / "Emulation" / "bios" / "psvita";
+        boost::system::error_code ec;
+        if (fs::is_directory(bios_dir, ec)) {
+            for (const auto &entry : fs::directory_iterator(bios_dir, ec)) {
+                if (ec || !entry.is_regular_file())
+                    continue;
+                if (string_utils::tolower(entry.path().extension().string()) != ".pup")
+                    continue;
+                LOG_INFO("Installing firmware found in drop folder: {}", entry.path().string());
+                install_pup(emuenv.vita_fs_path, entry.path(), [](uint32_t progress) {
+                    LOG_INFO("Firmware installation progress: {}%", progress);
+                });
+                break; // one firmware package is enough
+            }
+        }
+    }
+
+    const fs::path roms_dir = home / "Emulation" / "roms" / "psvita";
+    boost::system::error_code ec;
+    if (!fs::is_directory(roms_dir, ec))
+        return;
+
+    // Never prompt to reinstall - keeps repeated boot-time scans idempotent instead of
+    // re-extracting a multi-GB archive every single launch.
+    const ReinstallCallback skip_if_installed = [](const std::string &, const std::string &) {
+        return false;
+    };
+
+    for (const auto &entry : fs::directory_iterator(roms_dir, ec)) {
+        if (ec || !entry.is_regular_file())
+            continue;
+        const std::string extension = string_utils::tolower(entry.path().extension().string());
+        if (extension != ".vpk" && extension != ".zip")
+            continue;
+        LOG_INFO("Installing content found in drop folder: {}", entry.path().string());
+        install_archive(emuenv, entry.path(), nullptr, skip_if_installed);
+    }
+}
+
 } // namespace
 
 int main(int argc, char *argv[]) {
@@ -308,16 +376,36 @@ int main(int argc, char *argv[]) {
     fs::create_directories(cfg.get_vita_fs_path());
 
     if (config_err != Success) {
-        // A CLI-only action (pkg/pup install, delete-title, etc.) was already
-        // handled inside init_config for QuitRequested; anything else is a
-        // genuine config failure.
-        return config_err == QuitRequested ? Success : InitConfigFailed;
-    }
+        if (config_err != QuitRequested) {
+            LOG_ERROR("Failed to initialise config");
+            return InitConfigFailed;
+        }
 
-    if (!cfg.run_app_path.has_value()) {
-        LOG_ERROR("No game to launch - pass --installed-path/-r <title id> "
-                  "(this is what a Steam shortcut's Launch Options field should call this binary with).");
-        return InitConfigFailed;
+        // CLI-only maintenance actions - same set the Qt build supports (main.cpp), minus the
+        // developer-only shader-recompile/decode-at9 tools that don't matter for an end-user
+        // Steam Deck/Machine build. Useful as a one-off Steam shortcut of its own, e.g.
+        // "Vita3K --firmware firmware.pup", separate from the per-game -r shortcuts.
+        if (cfg.delete_title_id.has_value()) {
+            LOG_INFO("Deleting title id {}", *cfg.delete_title_id);
+            fs::remove_all(cfg.get_vita_fs_path() / "ux0/app" / *cfg.delete_title_id);
+            fs::remove_all(cfg.get_vita_fs_path() / "ux0/addcont" / *cfg.delete_title_id);
+            fs::remove_all(cfg.get_vita_fs_path() / "ux0/user/00/savedata" / *cfg.delete_title_id);
+            fs::remove_all(root_paths.get_cache_path() / "shaders" / *cfg.delete_title_id);
+        }
+        if (cfg.pup_path.has_value()) {
+            LOG_INFO("Installing firmware file {}", *cfg.pup_path);
+            install_pup(cfg.get_vita_fs_path(), *cfg.pup_path, [](uint32_t progress) {
+                LOG_INFO("Firmware installation progress: {}%", progress);
+            });
+        }
+        if (cfg.pkg_path.has_value() && cfg.pkg_zrif.has_value()) {
+            LOG_INFO("Installing pkg from {}", *cfg.pkg_path);
+            emuenv.cache_path = root_paths.get_cache_path().generic_path();
+            emuenv.vita_fs_path = cfg.get_vita_fs_path();
+            auto pkg_path = fs_utils::utf8_to_path(*cfg.pkg_path);
+            install_pkg(pkg_path, emuenv, *cfg.pkg_zrif, [](float) {});
+        }
+        return Success;
     }
 
     if (!app::init(emuenv, cfg, root_paths)) {
@@ -333,6 +421,41 @@ int main(int argc, char *argv[]) {
 
     init_libraries(emuenv);
 
+    scan_and_install_drop_folder(emuenv);
+
+    if (emuenv.cfg.content_path.has_value()) {
+        const auto extension = string_utils::tolower(emuenv.cfg.content_path->extension().string());
+        const auto is_archive = (extension == ".vpk") || (extension == ".zip");
+        const auto is_rif = (extension == ".rif") || (emuenv.cfg.content_path->filename() == "work.bin");
+        const auto is_directory = fs::is_directory(*emuenv.cfg.content_path);
+
+        std::string boot_title_id;
+
+        if (is_archive) {
+            LOG_INFO("Installing archive from CLI: {}", emuenv.cfg.content_path->string());
+            std::vector<ContentInfo> contents_info = install_archive(emuenv, *emuenv.cfg.content_path);
+            const auto content_index = std::find_if(contents_info.begin(), contents_info.end(), [](const ContentInfo &c) {
+                return c.category == "gd";
+            });
+            if (content_index != contents_info.end() && content_index->state)
+                boot_title_id = content_index->title_id;
+        } else if (is_directory) {
+            LOG_INFO("Installing contents from CLI: {}", emuenv.cfg.content_path->string());
+            if (install_contents(emuenv, *emuenv.cfg.content_path) == 1 && emuenv.app_info.app_category == "gd")
+                boot_title_id = emuenv.app_info.app_title_id;
+        } else if (is_rif) {
+            LOG_INFO("Installing license from CLI: {}", emuenv.cfg.content_path->string());
+            copy_license(emuenv, *emuenv.cfg.content_path);
+        } else {
+            LOG_ERROR("File: [{}] is not a supported content type.", emuenv.cfg.content_path->string());
+        }
+
+        emuenv.cfg.content_path.reset();
+
+        if (!boot_title_id.empty() && !emuenv.cfg.run_app_path.has_value())
+            emuenv.cfg.run_app_path = boot_title_id;
+    }
+
     if (!app::init_apps_list(emuenv))
         LOG_ERROR("Failed to initialize apps list.");
 
@@ -342,6 +465,13 @@ int main(int argc, char *argv[]) {
         return 1;
     }
     compat::load_from_disk(emuenv.compat, std::filesystem::path(emuenv.cache_path.string()));
+
+    if (!emuenv.cfg.run_app_path.has_value()) {
+        LOG_INFO("No game to launch - pass --installed-path/-r <title id> to boot a specific title "
+                 "(this is what a Steam shortcut's Launch Options field should call this binary with). "
+                 "Firmware/content drop-folder scan is complete; nothing more to do.");
+        return Success;
+    }
 
     AppLaunchRequest launch_request{ .app_path = *emuenv.cfg.run_app_path };
     emuenv.cfg.run_app_path.reset();
