@@ -49,7 +49,7 @@ PACKAGES=(
     # audio backends (cubeb builds both in)
     libpulse alsa-lib
     # SDL's Linux video/input backends
-    dbus libdecor libusb
+    dbus libdecor libusb systemd-libs libxkbcommon libdrm mesa pipewire ibus
     # misc build-time tools
     pkgconf python git
 )
