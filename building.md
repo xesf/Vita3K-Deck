@@ -148,6 +148,62 @@ Note: The CMake preset `linux-ninja-clang` makes use of the LLD linker, which wi
   cmake --build build/linux-ninja-clang
   ```
 
+## Steam Deck / Steam Machine (SteamOS native, Qt-free)
+
+This is a separate frontend used by the `steamdeck` branch: no Qt/GUI dependency, no
+game-picker (each game launches directly via `-r <TITLEID>`), no Discord Rich Presence, no
+in-app updater. It builds on top of the regular Linux CMake setup above, adding two options:
+
+- `VITA3K_STEAMOS_NATIVE` (`ON`/`OFF`, default `OFF`) — builds `main_linux_native.cpp` instead
+  of the Qt frontend, and skips the Qt6 `find_package`/`gui-qt` subdirectory entirely.
+- `VITA3K_STEAM_PROFILE` (`deck`/`machine`, default `deck`) — selects the compiled-in default
+  settings profile (resolution multiplier, anisotropic filtering, etc. — see
+  `vita3k/config/include/config/config.h` for the exact values per profile).
+
+### Setting up the build environment (SteamOS)
+
+A SteamOS system update can wipe the developer toolchain and packages needed to build. Run
+`packaging/steamos/setup-build-env.sh` (needs `sudo`) to (re)install everything required —
+safe to re-run any time after an OS update:
+
+```sh
+./packaging/steamos/setup-build-env.sh
+```
+
+### Building
+
+```sh
+git clone --recursive <your fork URL>
+cd Vita3K-Plus
+
+# Deck profile (1x resolution, 2x anisotropic filtering - conservative for battery/thermals)
+cmake --preset linux-ninja-clang -B build/steamdeck-native -DVITA3K_STEAMOS_NATIVE=ON -DVITA3K_STEAM_PROFILE=deck
+cmake --build build/steamdeck-native --config Release -j"$(nproc)"
+
+# Machine profile (4x resolution / 4K, 4x anisotropic filtering - more headroom)
+cmake -S . -B build/steamdeck-native -DVITA3K_STEAM_PROFILE=machine
+cmake --build build/steamdeck-native --config Release -j"$(nproc)"
+```
+
+Both profiles share the same build tree/dependencies — switching `VITA3K_STEAM_PROFILE` and
+rebuilding only recompiles the handful of translation units whose compiled-in defaults
+depend on it, so there's no need for two separate `build/` directories unless you want to
+keep both binaries around simultaneously. The resulting binary is at
+`build/steamdeck-native/bin/Release/Vita3K`.
+
+### Running
+
+There is no in-app game picker — launch a specific title directly:
+
+```sh
+./Vita3K -r <TITLEID>
+```
+
+Add it as a non-Steam Game shortcut with the title ID in the Launch Options field for one
+shortcut per installed game. On first launch, firmware `.pup` files placed in
+`~/Emulation/bios/psvita` and game `.vpk`/`.zip` archives placed in
+`~/Emulation/roms/psvita` are auto-installed (EmuDeck-style drop folders).
+
 ## Android
 
 - Building the Android version requires both the [Android SDK](https://developer.android.com/ndk/downloads) and [Android NDK](https://developer.android.com/ndk/downloads), both can be installed from Android Studio. You will need to set the environment variable ANDROID_NDK_HOME (and ANDROID_SDK_HOME when not using Android Studio) to their proper location.
