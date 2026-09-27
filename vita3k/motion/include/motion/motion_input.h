@@ -52,6 +52,8 @@ public:
     SceBool IsGyroBiasEnabled() const;
     SceBool IsTiltCorrectionEnabled() const;
     SceBool IsDeadbandEnabled() const;
+    // Temporary - for diagnosing the aim/balance gyro-trust behavior.
+    [[nodiscard]] bool IsOnlyAccelerometer() const { return only_accelerometer; }
 
 private:
     void ResetOrientation();

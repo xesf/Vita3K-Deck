@@ -288,5 +288,20 @@ void refresh_motion(MotionState &state, CtrlState &ctrl_state) {
     state.last_accel_timestamp = state.last_updated_accel_timestamp;
     state.last_gyro_timestamp = state.last_updated_gyro_timestamp;
 
+    // Temporary diagnostic trace - throttled to ~4/sec - for tracking down why aim and the
+    // balance mechanic seem to need opposite gyro/accel trust behavior. Remove once resolved.
+    if ((state.last_counter % 15) == 0) {
+        const auto gyro = state.motion_data.GetGyroscope();
+        const auto accel = state.motion_data.GetAcceleration();
+        const auto quat = state.motion_data.GetOrientation();
+        const auto basic = state.motion_data.GetBasicOrientation();
+        LOG_INFO("[MOTIONTRACE] only_accel={} gyro=({:.3f},{:.3f},{:.3f})|{:.4f} accel=({:.3f},{:.3f},{:.3f})|{:.4f} quat=({:.3f},{:.3f},{:.3f},{:.3f}) basic=({:.1f},{:.1f},{:.1f})",
+            state.motion_data.IsOnlyAccelerometer(),
+            gyro.x, gyro.y, gyro.z, gyro.Length(),
+            accel.x, accel.y, accel.z, accel.Length(),
+            quat.w, quat.xyz[0], quat.xyz[1], quat.xyz[2],
+            basic.x, basic.y, basic.z);
+    }
+
     state.last_counter++;
 }
