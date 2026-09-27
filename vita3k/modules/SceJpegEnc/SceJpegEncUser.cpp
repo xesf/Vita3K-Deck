@@ -160,5 +160,11 @@ EXPORT(int, sceJpegEncoderSetOutputAddr, SceJpegEncoderContext *context, Ptr<uin
 
 EXPORT(int, sceJpegEncoderSetValidRegion, SceJpegEncoderContext *context, int32_t inWidth, int32_t inHeight) {
     TRACY_FUNC(sceJpegEncoderSetValidRegion, context, inWidth, inHeight);
-    return UNIMPLEMENTED();
+    // Narrows the region of the (possibly larger, padded) init buffer that's actually valid
+    // image data. Leaving this a no-op meant sceJpegEncoderCsc/Encode kept using the full
+    // init dimensions, which can include unwritten padding - contributing to corrupted/black
+    // in-game photo captures alongside the BGRA8888 CSC fix.
+    context->inWidth = inWidth;
+    context->inHeight = inHeight;
+    return 0;
 }
