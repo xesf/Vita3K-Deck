@@ -524,7 +524,9 @@ int main(int argc, char *argv[]) {
             break;
         }
 
-        SDL_WindowFlags window_flags = SDL_WINDOW_RESIZABLE;
+        // Always start fullscreen - this build is controller-first with no windowed UI to
+        // resize around, and matches how every other game on Steam behaves.
+        SDL_WindowFlags window_flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_FULLSCREEN;
         if (emuenv.backend_renderer == renderer::Backend::OpenGL) {
             window_flags |= SDL_WINDOW_OPENGL;
             if (!SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE)
