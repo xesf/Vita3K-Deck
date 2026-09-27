@@ -46,6 +46,9 @@ static int sceJpegEncoderInitImpl(SceJpegEncoderContext *context, int32_t inWidt
     context->compressRatio = 64;
     context->headerMode = SCE_JPEGENC_HEADER_MODE_JPEG;
 
+    // Temporary diagnostic - remove once the black-photo-capture issue is resolved.
+    LOG_INFO("[JPEGTRACE] Init: {}x{} pixelFormat=0x{:X} outSize={}", inWidth, inHeight, pixelFormat, outSize);
+
     return 0;
 }
 
@@ -73,6 +76,16 @@ EXPORT(int, sceJpegEncoderCsc, SceJpegEncoderContext *context, Ptr<uint8_t> outB
         // buffer - this is why in-game photo captures (e.g. Uncharted, which passes BGRA8888)
         // came out as solid green/corrupted images instead of a hard, obvious failure.
         return STUBBED("Only RGBA8888/BGRA8888 to YCbCr is implemented.");
+    }
+
+    // Temporary diagnostic - sample a handful of source pixels to see if inBufferData actually
+    // holds real captured image data or is itself empty/black at this point.
+    {
+        std::string sample;
+        for (int i = 0; i < 8 && i * 4 + 3 < inPitch * 4; i++)
+            sample += fmt::format("({:02X},{:02X},{:02X},{:02X}) ", inBufferData[i * 4], inBufferData[i * 4 + 1], inBufferData[i * 4 + 2], inBufferData[i * 4 + 3]);
+        LOG_INFO("[JPEGTRACE] Csc: context={}x{} inPitch={} inPixelFormat=0x{:X} first pixels: {}",
+            context->inWidth, context->inHeight, inPitch, inPixelFormat, sample);
     }
 
     convert_rgb_to_yuv(inBufferData, outBufferData, context->inWidth, context->inHeight, color_space, inPitch, inPixelFormat == SCE_JPEGENC_PIXEL_BGRA8888);
@@ -166,5 +179,6 @@ EXPORT(int, sceJpegEncoderSetValidRegion, SceJpegEncoderContext *context, int32_
     // in-game photo captures alongside the BGRA8888 CSC fix.
     context->inWidth = inWidth;
     context->inHeight = inHeight;
+    LOG_INFO("[JPEGTRACE] SetValidRegion: {}x{}", inWidth, inHeight);
     return 0;
 }
