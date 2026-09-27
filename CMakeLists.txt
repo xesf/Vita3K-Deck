@@ -52,10 +52,15 @@ else()
 endif()
 
 option(VITA3K_STEAMOS_NATIVE "Build a Qt-free native frontend for Steam Deck / Steam Machine (no game picker, launches one title per process via --installed-path/-r)" OFF)
+set(VITA3K_STEAM_PROFILE "deck" CACHE STRING "Default settings profile for VITA3K_STEAMOS_NATIVE: deck or machine")
+set_property(CACHE VITA3K_STEAM_PROFILE PROPERTY STRINGS deck machine)
 if(VITA3K_STEAMOS_NATIVE)
 	# Steam already provides rich presence and update delivery for anything added as a Steam shortcut.
 	set(USE_DISCORD_RICH_PRESENCE OFF CACHE BOOL "" FORCE)
 	add_compile_definitions(VITA3K_STEAMOS_NATIVE)
+	if(VITA3K_STEAM_PROFILE STREQUAL "machine")
+		add_compile_definitions(VITA3K_STEAM_PROFILE_MACHINE)
+	endif()
 endif()
 
 option(FORCE_BUILD_OPENSSL_MAC OFF)

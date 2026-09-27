@@ -32,11 +32,32 @@
 // Steam already provides rich presence and update delivery for anything added as a Steam
 // shortcut, and there's no in-app UI to surface an update prompt in anyway.
 #define VITA3K_DEFAULT_DISCORD_RICH_PRESENCE false
-// Modern AMD APUs handle this for free at Vita-era texture resolutions.
+// Both profiles: surface-sync and async pipeline compilation cost more than they help once
+// texture/shader caches are warm, FXAA is a cheap default upgrade over bilinear, and the
+// fps-hack matches this being a fixed, known-good target device rather than an unknown host.
+#define VITA3K_DEFAULT_DISABLE_SURFACE_SYNC true
+#define VITA3K_DEFAULT_ASYNC_PIPELINE_COMPILATION true
+#define VITA3K_DEFAULT_SCREEN_FILTER "FXAA"
+#define VITA3K_DEFAULT_FPS_HACK true
+#ifdef VITA3K_STEAM_PROFILE_MACHINE
+// Steam Machine has materially more GPU/CPU headroom than Deck - render at 4x the Vita's
+// native 960x544 (i.e. exactly 4K) with 4x anisotropic filtering.
 #define VITA3K_DEFAULT_ANISOTROPIC_FILTERING 4
+#define VITA3K_DEFAULT_RESOLUTION_MULTIPLIER 4.0f
+#else
+// Deck profile: stay conservative for battery/thermals - native resolution, no anisotropic
+// filtering overhead.
+#define VITA3K_DEFAULT_ANISOTROPIC_FILTERING 1
+#define VITA3K_DEFAULT_RESOLUTION_MULTIPLIER 1.0f
+#endif
 #else
 #define VITA3K_DEFAULT_DISCORD_RICH_PRESENCE true
 #define VITA3K_DEFAULT_ANISOTROPIC_FILTERING 1
+#define VITA3K_DEFAULT_RESOLUTION_MULTIPLIER 1.0f
+#define VITA3K_DEFAULT_DISABLE_SURFACE_SYNC false
+#define VITA3K_DEFAULT_ASYNC_PIPELINE_COMPILATION false
+#define VITA3K_DEFAULT_SCREEN_FILTER "Bilinear"
+#define VITA3K_DEFAULT_FPS_HACK false
 #endif
 
 enum ModulesMode {
@@ -170,14 +191,14 @@ using PhysicalKeyCode = input::PhysicalKeyCode;
     code(bool, "disable-programmable-blending", false, disable_programmable_blending)               \
     code(bool, "force-full-precision", false, force_full_precision)                                \
     code(int, "hang-dump-seconds", 0, hang_dump_seconds)                                       \
-    code(float, "resolution-multiplier", 1.0f, resolution_multiplier)                                   \
-    code(bool, "disable-surface-sync", false, disable_surface_sync)                                      \
+    code(float, "resolution-multiplier", VITA3K_DEFAULT_RESOLUTION_MULTIPLIER, resolution_multiplier)    \
+    code(bool, "disable-surface-sync", VITA3K_DEFAULT_DISABLE_SURFACE_SYNC, disable_surface_sync)        \
     code(bool, "surface-sync-clamp-rt", true, surface_sync_clamp_rt)                               \
-    code(std::string, "screen-filter", "Bilinear", screen_filter)                                       \
+    code(std::string, "screen-filter", VITA3K_DEFAULT_SCREEN_FILTER, screen_filter)                      \
     code(bool, "v-sync", true, v_sync)                                                                  \
     code(int, "anisotropic-filtering", VITA3K_DEFAULT_ANISOTROPIC_FILTERING, anisotropic_filtering)      \
     code(bool, "texture-cache", true, texture_cache)                                                    \
-    code(bool, "async-pipeline-compilation", false, async_pipeline_compilation)                          \
+    code(bool, "async-pipeline-compilation", VITA3K_DEFAULT_ASYNC_PIPELINE_COMPILATION, async_pipeline_compilation) \
     code(bool, "accurate-thread-scheduling", true, accurate_thread_scheduling)                          \
     code(bool, "preempt-on-wake", false, preempt_on_wake)                                               \
     code(int, "preempt-on-wake-us", 1000, preempt_on_wake_us)                                             \
@@ -225,7 +246,7 @@ using PhysicalKeyCode = input::PhysicalKeyCode;
     code(int, "file-loading-delay", 0, file_loading_delay)                                              \
     code(bool, "shader-cache", true, shader_cache)                                                      \
     code(bool, "spirv-shader", false, spirv_shader)                                                     \
-    code(bool, "fps-hack", false, fps_hack)                                                             \
+    code(bool, "fps-hack", VITA3K_DEFAULT_FPS_HACK, fps_hack)                                           \
     code(uint64_t, "current-ime-lang", 4, current_ime_lang)                                             \
     code(int, "psn-signed-in", false, psn_signed_in)                                                    \
     code(bool, "http-enable", true, http_enable)                                                        \
