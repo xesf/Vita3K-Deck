@@ -45,10 +45,10 @@
 #define VITA3K_DEFAULT_ANISOTROPIC_FILTERING 4
 #define VITA3K_DEFAULT_RESOLUTION_MULTIPLIER 4.0f
 #else
-// Deck profile: stay conservative for battery/thermals - native resolution, no anisotropic
-// filtering overhead.
-#define VITA3K_DEFAULT_ANISOTROPIC_FILTERING 1
-#define VITA3K_DEFAULT_RESOLUTION_MULTIPLIER 1.0f
+// Deck profile: modest supersampling and filtering - still conservative for battery/thermals,
+// but a bit above bare native resolution.
+#define VITA3K_DEFAULT_ANISOTROPIC_FILTERING 2
+#define VITA3K_DEFAULT_RESOLUTION_MULTIPLIER 1.25f
 #endif
 #else
 #define VITA3K_DEFAULT_DISCORD_RICH_PRESENCE true
