@@ -76,7 +76,7 @@ void convert_yuv_to_rgb(const uint8_t *yuv, uint8_t *rgba, uint32_t frame_width,
     sws_freeContext(context);
 }
 
-void convert_rgb_to_yuv(const uint8_t *rgba, uint8_t *yuv, uint32_t width, uint32_t height, const DecoderColorSpace color_space, int32_t in_pitch) {
+void convert_rgb_to_yuv(const uint8_t *rgba, uint8_t *yuv, uint32_t width, uint32_t height, const DecoderColorSpace color_space, int32_t in_pitch, bool is_bgra) {
     AVPixelFormat format = AV_PIX_FMT_NONE;
     int strides_divisor = 1;
     int slice_position = 8;
@@ -102,7 +102,7 @@ void convert_rgb_to_yuv(const uint8_t *rgba, uint8_t *yuv, uint32_t width, uint3
         return;
     }
 
-    SwsContext *context = sws_getContext(width, height, AV_PIX_FMT_RGBA, width, height, format,
+    SwsContext *context = sws_getContext(width, height, is_bgra ? AV_PIX_FMT_BGRA : AV_PIX_FMT_RGBA, width, height, format,
         SWS_FULL_CHR_H_INT | SWS_ACCURATE_RND, nullptr, nullptr, nullptr);
     assert(context);
 

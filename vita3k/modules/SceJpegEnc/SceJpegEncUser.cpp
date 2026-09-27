@@ -67,11 +67,15 @@ EXPORT(int, sceJpegEncoderCsc, SceJpegEncoderContext *context, Ptr<uint8_t> outB
         return SCE_JPEGENC_ERROR_INVALID_PIXELFORMAT;
     }
 
-    if (inPixelFormat != SCE_JPEGENC_PIXEL_RGBA8888) {
-        return STUBBED("Only RGBA8888 to YCbCr is implemented.");
+    if (inPixelFormat != SCE_JPEGENC_PIXEL_RGBA8888 && inPixelFormat != SCE_JPEGENC_PIXEL_BGRA8888) {
+        // Falling through here previously returned 0 (success) without touching outBufferData at
+        // all, so the game went on to JPEG-encode whatever garbage was already sitting in that
+        // buffer - this is why in-game photo captures (e.g. Uncharted, which passes BGRA8888)
+        // came out as solid green/corrupted images instead of a hard, obvious failure.
+        return STUBBED("Only RGBA8888/BGRA8888 to YCbCr is implemented.");
     }
 
-    convert_rgb_to_yuv(inBufferData, outBufferData, context->inWidth, context->inHeight, color_space, inPitch);
+    convert_rgb_to_yuv(inBufferData, outBufferData, context->inWidth, context->inHeight, color_space, inPitch, inPixelFormat == SCE_JPEGENC_PIXEL_BGRA8888);
 
     return 0;
 }
