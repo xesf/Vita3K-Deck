@@ -48,20 +48,9 @@ void MotionInput::SetGyroscope(const Util::Vec3f &gyroscope) {
         gyro_bias = (gyro_bias * 0.9999f) + (gyroscope * 0.0001f);
     }
 
-    // Trust gyro immediately the instant real rotation reappears (keeps aim responsive - no lag
-    // switching back into gyro-trusting mode), but only fall back to strong accelerometer
-    // correction after a SUSTAINED run of near-zero rate, not a single low-rate instant.
-    // Continuous smooth aiming has plenty of brief low-rate moments too (deadband dips at
-    // direction changes, gentle fine adjustments) and reacting to those alone made aim fight
-    // itself; a slow, direction-reversing "rock back and forth to balance" tilt genuinely stays
-    // near-zero rate for a sustained stretch, which is what should engage the strong correction
-    // (see UpdateOrientation) instead of the permanent one-way latch this used to be.
-    constexpr int accel_only_hysteresis_samples = 15;
-    if (gyro.Length2() > 0.0f) {
+    // Enable gyro compensation if gyro is active
+    if (gyro.Length2() > 0) {
         only_accelerometer = false;
-        accel_only_hysteresis_counter = 0;
-    } else if (++accel_only_hysteresis_counter >= accel_only_hysteresis_samples) {
-        only_accelerometer = true;
     }
 }
 
