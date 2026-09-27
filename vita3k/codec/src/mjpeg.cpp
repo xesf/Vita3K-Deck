@@ -102,7 +102,10 @@ void convert_rgb_to_yuv(const uint8_t *rgba, uint8_t *yuv, uint32_t width, uint3
         return;
     }
 
-    SwsContext *context = sws_getContext(width, height, is_bgra ? AV_PIX_FMT_BGRA : AV_PIX_FMT_RGBA, width, height, format,
+    // Empirically the source-side (pack: RGB->YUV) mapping is the opposite of the
+    // destination-side one in convert_yuv_to_rgb below - fire showed as blue (a clean R/B
+    // channel swap) when this mirrored that function's is_bgra ? BGRA : RGBA convention.
+    SwsContext *context = sws_getContext(width, height, is_bgra ? AV_PIX_FMT_RGBA : AV_PIX_FMT_BGRA, width, height, format,
         SWS_FULL_CHR_H_INT | SWS_ACCURATE_RND, nullptr, nullptr, nullptr);
     assert(context);
 
